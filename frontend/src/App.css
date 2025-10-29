@@ -1,0 +1,193 @@
+/* frontend/src/App.css */
+
+/* --- Цветовая палитра и основные стили --- */
+:root {
+  --bg-color: #1e1e1e;
+  --panel-color: #252526;
+  --sidebar-color: #2d2d2d;
+  --border-color: #444;
+  --text-color: #cccccc;
+  --text-color-light: #ffffff;
+  --primary-color: #007acc;
+  --primary-hover-color: #009bff;
+  --danger-color: #f44336;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* --- Основной контейнер --- */
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* --- Боковая панель (Конструктор) --- */
+.sidebar {
+  width: 350px;
+  min-width: 300px;
+  padding: 20px;
+  background-color: var(--sidebar-color);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.sidebar h2 {
+  color: var(--text-color-light);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+/* --- Основной контент (Генератор) --- */
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: var(--panel-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.5em;
+  color: var(--text-color-light);
+}
+
+/* --- Кнопки --- */
+.button {
+  padding: 10px 15px;
+  border: none;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.button:hover {
+  background-color: var(--primary-hover-color);
+}
+
+.button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+
+.button-danger {
+  background-color: var(--danger-color);
+}
+
+.button-icon {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 2px 5px;
+  font-size: 16px;
+}
+.button-icon:hover {
+  color: var(--danger-color);
+}
+
+
+/* --- Интерактивная карточка сущности --- */
+.entity-card {
+  background: var(--panel-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.entity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.entity-name-input {
+  font-size: 1.2em;
+  font-weight: bold;
+  background-color: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-color-light);
+  width: 70%;
+}
+.entity-name-input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--primary-color);
+}
+
+.field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-input {
+  background-color: var(--sidebar-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 6px;
+  border-radius: 4px;
+  width: 40%;
+}
+.field-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* --- Вкладки для кода --- */
+.code-tabs {
+  display: flex;
+  background-color: var(--panel-color);
+}
+
+.tab {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text-color);
+}
+
+.tab.active {
+  color: var(--text-color-light);
+  background-color: var(--bg-color);
+  border-bottom: 2px solid var(--primary-color);
+}
+
+/* --- Секция LLM --- */
+.llm-section {
+  margin-top: 20px;
+}
+
+textarea {
+  width: calc(100% - 20px);
+  background-color: var(--panel-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  resize: vertical;
+}

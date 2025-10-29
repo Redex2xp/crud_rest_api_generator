@@ -1,0 +1,64 @@
+# backend/app/generator/templates/main.py.jinja2
+from fastapi import FastAPI, HTTPException
+from typing import List
+from . import models
+
+app = FastAPI(title="Generated CRUD API")
+
+# --- In-memory "database" ---
+# Это простое хранилище в памяти в виде словаря.
+# В реальном проекте здесь будет подключение к БД.
+db = {
+{% for entity in entities %}
+    "{{ entity.name | lower }}s": {} {% if not loop.last %},{% endif %}
+{% endfor %}
+}
+
+# --- Helper for next ID ---
+next_id = {
+{% for entity in entities %}
+    "{{ entity.name | lower }}s": 1 {% if not loop.last %},{% endif %}
+{% endfor %}
+}
+
+# --- CRUD Endpoints for each entity ---
+{% for entity in entities %}
+# --- {{ entity.name }} Endpoints ---
+
+@app.post("/{{ entity.name | lower }}s/", response_model=models.{{ entity.name }}, status_code=201)
+def create_{{ entity.name | lower }}(item: models.{{ entity.name }}Create):
+    global next_id
+    item_id = next_id["{{ entity.name | lower }}s"]
+    db["{{ entity.name | lower }}s"][item_id] = models.{{ entity.name }}(id=item_id, **item.dict())
+    next_id["{{ entity.name | lower }}s"] += 1
+    return db["{{ entity.name | lower }}s"][item_id]
+
+@app.get("/{{ entity.name | lower }}s/{item_id}", response_model=models.{{ entity.name }})
+def read_{{ entity.name | lower }}(item_id: int):
+    if item_id not in db["{{ entity.name | lower }}s"]:
+        raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
+    return db["{{ entity.name | lower }}s"][item_id]
+
+@app.get("/{{ entity.name | lower }}s/", response_model=List[models.{{ entity.name }}])
+def read_{{ entity.name | lower }}_list():
+    return list(db["{{ entity.name | lower }}s"].values())
+
+@app.put("/{{ entity.name | lower }}s/{item_id}", response_model=models.{{ entity.name }})
+def update_{{ entity.name | lower }}(item_id: int, item: models.{{ entity.name }}Update):
+    if item_id not in db["{{ entity.name | lower }}s"]:
+        raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
+    
+    stored_item = db["{{ entity.name | lower }}s"][item_id]
+    update_data = item.dict(exclude_unset=True)
+    
+    updated_item = stored_item.copy(update=update_data)
+    db["{{ entity.name | lower }}s"][item_id] = updated_item
+    return updated_item
+
+@app.delete("/{{ entity.name | lower }}s/{item_id}", status_code=204)
+def delete_{{ entity.name | lower }}(item_id: int):
+    if item_id not in db["{{ entity.name | lower }}s"]:
+        raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
+    del db["{{ entity.name | lower }}s"][item_id]
+    return
+{% endfor %}

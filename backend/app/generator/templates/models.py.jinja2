@@ -1,0 +1,24 @@
+from pydantic import BaseModel
+from typing import Optional
+
+
+{% for entity in entities %}
+class {{ entity.name }}Base(BaseModel):
+    {% for field in entity.fields %}
+    {{ field.name }}: {{ field.type }}
+    {% endfor %}
+
+class {{ entity.name }}Create({{ entity.name }}Base):
+    pass
+
+class {{ entity.name }}Update(BaseModel):
+    {% for field in entity.fields %}
+    {{ field.name }}: Optional[{{ field.type }}] = None
+    {% endfor %}
+
+class {{ entity.name }}({{ entity.name }}Base):
+    id: int
+
+    class Config:
+        orm_mode = True
+{% endfor %}
