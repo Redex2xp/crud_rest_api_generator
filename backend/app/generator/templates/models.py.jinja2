@@ -1,24 +1,34 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
 
 
 {% for entity in entities %}
 class {{ entity.name }}Base(BaseModel):
-    {% for field in entity.fields %}
+    {% for field in entity.fields if field.name != 'id' and not field.relation %}
     {{ field.name }}: {{ field.type }}
     {% endfor %}
-
-class {{ entity.name }}Create({{ entity.name }}Base):
-    pass
-
-class {{ entity.name }}Update(BaseModel):
-    {% for field in entity.fields %}
-    {{ field.name }}: Optional[{{ field.type }}] = None
+    {# Поля-связи добавляем отдельно #}
+    {% for field in entity.fields if field.relation %}
+    {{ field.name }}: int
     {% endfor %}
 
 class {{ entity.name }}({{ entity.name }}Base):
     id: int
+    model_config = ConfigDict(from_attributes=True)
+{% endfor %}
 
-    class Config:
-        orm_mode = True
+{% for entity in entities %}
+class {{ entity.name }}Create({{ entity.name }}Base):
+    pass
+
+class {{ entity.name }}Update(BaseModel):
+    {% for field in entity.fields if field.name != 'id' %}
+    {{ field.name }}: Optional[{{ field.type if not field.relation else 'int' }}] = None
+    {% endfor %}
+
+class {{ entity.name }}WithRelations({{ entity.name }}):
+    {% for field in entity.fields if field.relation %}
+    # Заменяем author_id: int на author: Author
+    {{ field.name.replace('_id', '') }}: Optional[{{ field.relation.target_entity }}] = None
+    {% endfor %}
 {% endfor %}

@@ -1,0 +1,33 @@
+# .dockerignore
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-cache/
+.env
+
+# Node.js
+node_modules/
+npm-debug.log
+.npm
+dist/
+dist-ssr/
+.vite/
+
+# IDE files
+.idea/
+.vscode/
+*.swp

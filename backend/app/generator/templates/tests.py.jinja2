@@ -1,0 +1,69 @@
+from fastapi.testclient import TestClient
+from app.main import app
+import pytest
+
+client = TestClient(app)
+
+test_created_ids = {}
+
+{% for entity in entities %}
+def test_create_{{ entity.name | lower }}():
+    """Тест успешного создания сущности {{ entity.name }}."""
+    test_data = {
+    {% for field in entity.fields if field.name != 'id' %}
+        "{{ field.name }}": {% if field.type == 'str' %}"Test {{ field.name }}"{% elif field.type == 'int' %}123{% elif field.type == 'float' %}123.45{% elif field.type == 'bool' %}True{% else %}None{% endif %}{% if not loop.last %},{% endif %}
+    {% endfor %}
+    }
+    response = client.post("/{{ entity.name | lower }}s/", json=test_data)
+    
+    assert response.status_code == 201, response.text
+    data = response.json()
+    assert data["{{ entity.fields[1].name }}"] == test_data["{{ entity.fields[1].name }}"]
+    assert "id" in data
+    test_created_ids["{{ entity.name | lower }}"] = data["id"]
+
+
+def test_read_{{ entity.name | lower }}_list():
+    """Тест чтения списка сущностей {{ entity.name }}."""
+    response = client.get("/{{ entity.name | lower }}s/")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+def test_read_one_{{ entity.name | lower }}():
+    """Тест чтения одной сущности {{ entity.name }} по ID."""
+    item_id = test_created_ids.get("{{ entity.name | lower }}")
+    assert item_id is not None, "ID for {{ entity.name }} was not created in the previous test"
+    
+    response = client.get(f"/{{ entity.name | lower }}s/{item_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == item_id
+
+
+def test_update_{{ entity.name | lower }}():
+    """Тест обновления сущности {{ entity.name }}."""
+    item_id = test_created_ids.get("{{ entity.name | lower }}")
+    assert item_id is not None
+    
+    update_data = {"{{ entity.fields[1].name }}": "Updated Value"}
+    response = client.put(f"/{{ entity.name | lower }}s/{item_id}", json=update_data)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["{{ entity.fields[1].name }}"] == "Updated Value"
+
+
+def test_delete_{{ entity.name | lower }}():
+    """Тест удаления сущности {{ entity.name }}."""
+    item_id = test_created_ids.get("{{ entity.name | lower }}")
+    assert item_id is not None
+
+    response_delete = client.delete(f"/{{ entity.name | lower }}s/{item_id}")
+    assert response_delete.status_code == 204
+
+    response_get = client.get(f"/{{ entity.name | lower }}s/{item_id}")
+    assert response_get.status_code == 404
+
+{% endfor %}
+

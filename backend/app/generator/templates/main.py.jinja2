@@ -1,47 +1,67 @@
-# backend/app/generator/templates/main.py.jinja2
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from typing import List
 from . import models
 
 app = FastAPI(title="Generated CRUD API")
 
-# --- In-memory "database" ---
-# Это простое хранилище в памяти в виде словаря.
-# В реальном проекте здесь будет подключение к БД.
 db = {
 {% for entity in entities %}
     "{{ entity.name | lower }}s": {} {% if not loop.last %},{% endif %}
 {% endfor %}
 }
-
-# --- Helper for next ID ---
 next_id = {
 {% for entity in entities %}
     "{{ entity.name | lower }}s": 1 {% if not loop.last %},{% endif %}
 {% endfor %}
 }
 
-# --- CRUD Endpoints for each entity ---
+
 {% for entity in entities %}
-# --- {{ entity.name }} Endpoints ---
 
 @app.post("/{{ entity.name | lower }}s/", response_model=models.{{ entity.name }}, status_code=201)
 def create_{{ entity.name | lower }}(item: models.{{ entity.name }}Create):
     global next_id
     item_id = next_id["{{ entity.name | lower }}s"]
-    db["{{ entity.name | lower }}s"][item_id] = models.{{ entity.name }}(id=item_id, **item.dict())
+    
+    # Проверка существования связанных сущностей
+    {% for field in entity.fields if field.relation %}
+    if item.{{ field.name }} not in db["{{ field.relation.target_entity | lower }}s"]:
+        raise HTTPException(status_code=404, detail="{{ field.relation.target_entity }} with id {item.{{ field.name }}} not found")
+    {% endfor %}
+
+    new_item = models.{{ entity.name }}(id=item_id, **item.model_dump())
+    db["{{ entity.name | lower }}s"][item_id] = new_item
     next_id["{{ entity.name | lower }}s"] += 1
-    return db["{{ entity.name | lower }}s"][item_id]
+    return new_item
 
-@app.get("/{{ entity.name | lower }}s/{item_id}", response_model=models.{{ entity.name }})
-def read_{{ entity.name | lower }}(item_id: int):
+def get_{{ entity.name | lower }}_with_relations(item_id: int):
+    """Вспомогательная функция для 'джоина' данных."""
     if item_id not in db["{{ entity.name | lower }}s"]:
-        raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
-    return db["{{ entity.name | lower }}s"][item_id]
+        return None
+    item_data = db["{{ entity.name | lower }}s"][item_id]
+    
+    response_data = models.{{ entity.name }}WithRelations.model_validate(item_data)
+    
+    {% for field in entity.fields if field.relation %}
+    related_id = item_data.{{ field.name }}
+    if related_id in db["{{ field.relation.target_entity | lower }}s"]:
+        response_data.{{ field.name.replace('_id', '') }} = db["{{ field.relation.target_entity | lower }}s"][related_id]
+    {% endfor %}
+    return response_data
 
-@app.get("/{{ entity.name | lower }}s/", response_model=List[models.{{ entity.name }}])
+@app.get("/{{ entity.name | lower }}s/{item_id}", response_model=models.{{ entity.name }}WithRelations)
+def read_{{ entity.name | lower }}(item_id: int):
+    item = get_{{ entity.name | lower }}_with_relations(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
+    return item
+
+@app.get("/{{ entity.name | lower }}s/", response_model=List[models.{{ entity.name }}WithRelations])
 def read_{{ entity.name | lower }}_list():
-    return list(db["{{ entity.name | lower }}s"].values())
+    items_with_relations = []
+    for item_id in db["{{ entity.name | lower }}s"]:
+        items_with_relations.append(get_{{ entity.name | lower }}_with_relations(item_id))
+    return items_with_relations
 
 @app.put("/{{ entity.name | lower }}s/{item_id}", response_model=models.{{ entity.name }})
 def update_{{ entity.name | lower }}(item_id: int, item: models.{{ entity.name }}Update):
@@ -49,9 +69,9 @@ def update_{{ entity.name | lower }}(item_id: int, item: models.{{ entity.name }
         raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
     
     stored_item = db["{{ entity.name | lower }}s"][item_id]
-    update_data = item.dict(exclude_unset=True)
+    update_data = item.model_dump(exclude_unset=True)
     
-    updated_item = stored_item.copy(update=update_data)
+    updated_item = stored_item.model_copy(update=update_data)
     db["{{ entity.name | lower }}s"][item_id] = updated_item
     return updated_item
 
@@ -61,4 +81,20 @@ def delete_{{ entity.name | lower }}(item_id: int):
         raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
     del db["{{ entity.name | lower }}s"][item_id]
     return
+
+
+{% for other_entity in entities %}
+{% for field in other_entity.fields if field.relation and field.relation.target_entity == entity.name %}
+@app.get("/{{ entity.name | lower }}s/{{ '{' }}{{ entity.name | lower }}_id}/{{ other_entity.name | lower }}s/", response_model=List[models.{{ other_entity.name }}])
+def read_{{ other_entity.name | lower }}s_for_{{ entity.name | lower }}({{ entity.name | lower }}_id: int):
+    if {{ entity.name | lower }}_id not in db["{{ entity.name | lower }}s"]:
+        raise HTTPException(status_code=404, detail="{{ entity.name }} not found")
+    
+    related_items = []
+    for item in db["{{ other_entity.name | lower }}s"].values():
+        if item.{{ field.name }} == {{ entity.name | lower }}_id:
+            related_items.append(item)
+    return related_items
+{% endfor %}
+{% endfor %}
 {% endfor %}
